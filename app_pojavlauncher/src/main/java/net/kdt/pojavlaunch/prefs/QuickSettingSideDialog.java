@@ -295,8 +295,7 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
     }
 
     private void startRecordingService(int resultCode, Intent data) {
-        String outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/
-Pojav Launcher";
+        String outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/Pojav Launcher";
         Intent serviceIntent = new Intent(getContext(), ScreenRecordingService.class);
         serviceIntent.putExtra("resultCode", resultCode);
         serviceIntent.putExtra("data", data);
