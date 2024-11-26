@@ -16,6 +16,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Button;
+import android.os.Environment;
+import android.content.Intent;
+import android.provider.Settings;
+import android.media.projection.MediaProjectionManager;
+import android.app.Activity;
 
 import com.kdt.CustomSeekbar;
 
@@ -34,10 +40,14 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
     private Switch mGyroSwitch, mGyroXSwitch, mGyroYSwitch, mGestureSwitch;
     private CustomSeekbar mGyroSensitivityBar, mMouseSpeedBar, mGestureDelayBar, mResolutionBar;
     private TextView mGyroSensitivityText, mGyroSensitivityDisplayText, mMouseSpeedText, mGestureDelayText, mGestureDelayDisplayText, mResolutionText;
+    private Button mRecordScreenButton;
 
     private boolean mOriginalGyroEnabled, mOriginalGyroXEnabled, mOriginalGyroYEnabled, mOriginalGestureDisabled;
     private float mOriginalGyroSensitivity, mOriginalMouseSpeed, mOriginalResolution;
     private int mOriginalGestureDelay;
+
+    private boolean isRecording = false;
+    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
 
     public QuickSettingSideDialog(Context context, ViewGroup parent) {
         super(context, parent, R.layout.dialog_quick_setting);
@@ -51,6 +61,7 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
         Tools.runOnUiThread(() -> {
             this.setupListeners();
             this.updateGyroCompatibility();
+            this.setupRecordScreenButton();
         });
     }
 
@@ -77,6 +88,8 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
         mGestureDelayText = mDialogContent.findViewById(R.id.editGestureDelay_textView_percent);
         mGestureDelayDisplayText = mDialogContent.findViewById(R.id.editGestureDelay_textView);
         mResolutionText = mDialogContent.findViewById(R.id.editResolution_textView_percent);
+
+        mRecordScreenButton = mDialogContent.findViewById(R.id.recordScreenButton);
     }
 
     private void setupListeners() {
@@ -163,9 +176,36 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
         mResolutionBar.setProgress((int) (mOriginalResolution * 100));
         setSeekTextPercent(mResolutionText, mResolutionBar.getProgress());
 
-
         updateGyroVisibility(mOriginalGyroEnabled);
         updateGestureVisibility(mOriginalGestureDisabled);
+    }
+
+    private void setupRecordScreenButton() {
+        mRecordScreenButton.setOnClickListener(v -> {
+            if (!isRecording) {
+                startScreenRecording();
+            } else {
+                stopScreenRecording();
+            }
+        });
+        updateRecordButtonText();
+    }
+
+    private void startScreenRecording() {
+        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        Intent permissionIntent = mediaProjectionManager.createScreenCaptureIntent();
+        ((Activity) getContext()).startActivityForResult(permissionIntent, REQUEST_CODE_SCREEN_CAPTURE);
+    }
+
+    private void stopScreenRecording() {
+        Intent serviceIntent = new Intent(getContext(), ScreenRecordingService.class);
+        getContext().stopService(serviceIntent);
+        isRecording = false;
+        updateRecordButtonText();
+    }
+
+    private void updateRecordButtonText() {
+        mRecordScreenButton.setText(isRecording ? R.string.stop_recording : R.string.start_recording);
     }
 
     private static void setSeekTextMillisecond(TextView target, int value) {
@@ -215,6 +255,8 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
         mMouseSpeedBar.setOnSeekBarChangeListener(null);
         mGestureDelayBar.setOnSeekBarChangeListener(null);
         mResolutionBar.setOnSeekBarChangeListener(null);
+
+        mRecordScreenButton.setOnClickListener(null);
     }
 
     private void setupCancelButton() {
@@ -246,6 +288,24 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
         disappear(true);
     }
 
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE && resultCode == Activity.RESULT_OK) {
+            startRecordingService(resultCode, data);
+        }
+    }
+
+    private void startRecordingService(int resultCode, Intent data) {
+        String outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/
+Pojav Launcher";
+        Intent serviceIntent = new Intent(getContext(), ScreenRecordingService.class);
+        serviceIntent.putExtra("resultCode", resultCode);
+        serviceIntent.putExtra("data", data);
+        serviceIntent.putExtra("outputDir", outputDir);
+        getContext().startService(serviceIntent);
+        isRecording = true;
+        updateRecordButtonText();
+    }
+
     /** Called when the resolution is changed. Use {@link LauncherPreferences#PREF_SCALE_FACTOR} */
     public abstract void onResolutionChanged();
 
@@ -255,5 +315,5 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
      * Use {@link LauncherPreferences#PREF_GYRO_INVERT_Y}
      */
     public abstract void onGyroStateChanged();
-
 }
+
