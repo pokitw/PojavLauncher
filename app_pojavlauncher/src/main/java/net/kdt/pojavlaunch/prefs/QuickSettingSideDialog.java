@@ -28,6 +28,7 @@ import com.kdt.CustomSeekbar;
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.utils.interfaces.SimpleSeekBarListener;
+import net.kdt.pojavlaunch.services.ScreenRecordingService;
 
 /**
  * Side dialog for quick settings that you can change in game
@@ -192,14 +193,14 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
     }
 
     private void startScreenRecording() {
-        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) mDialogContent.getContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         Intent permissionIntent = mediaProjectionManager.createScreenCaptureIntent();
-        ((Activity) getContext()).startActivityForResult(permissionIntent, REQUEST_CODE_SCREEN_CAPTURE);
+        ((Activity) mDialogContent.getContext()).startActivityForResult(permissionIntent, REQUEST_CODE_SCREEN_CAPTURE);
     }
 
     private void stopScreenRecording() {
-        Intent serviceIntent = new Intent(getContext(), ScreenRecordingService.class);
-        getContext().stopService(serviceIntent);
+        Intent serviceIntent = new Intent(mDialogContent.getContext(), ScreenRecordingService.class);
+        mDialogContent.getContext().stopService(serviceIntent);
         isRecording = false;
         updateRecordButtonText();
     }
@@ -296,11 +297,11 @@ public abstract class QuickSettingSideDialog extends com.kdt.SideDialogView {
 
     private void startRecordingService(int resultCode, Intent data) {
         String outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/Pojav Launcher";
-        Intent serviceIntent = new Intent(getContext(), ScreenRecordingService.class);
+        Intent serviceIntent = new Intent(mDialogContent.getContext(), ScreenRecordingService.class);
         serviceIntent.putExtra("resultCode", resultCode);
         serviceIntent.putExtra("data", data);
         serviceIntent.putExtra("outputDir", outputDir);
-        getContext().startService(serviceIntent);
+        mDialogContent.getContext().startService(serviceIntent);
         isRecording = true;
         updateRecordButtonText();
     }
