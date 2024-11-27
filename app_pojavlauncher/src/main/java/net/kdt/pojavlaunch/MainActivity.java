@@ -97,6 +97,8 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
 
     private QuickSettingSideDialog mQuickSettingSideDialog;
 
+    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -144,6 +146,24 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
         ContextExecutor.setActivity(this);
         //Now, attach to the service. The game will only start when this happens, to make sure that we know the right state.
         bindService(gameServiceIntent, this, 0);
+
+        mQuickSettingSideDialog = new QuickSettingSideDialog(this, mControlLayout) {
+            @Override
+            public void onResolutionChanged() {
+                minecraftGLView.refreshSize();
+                mHotbarView.onResolutionChanged();
+            }
+
+            @Override
+            public void onGyroStateChanged() {
+                mGyroControl.updateOrientation();
+                if (PREF_ENABLE_GYRO) {
+                    mGyroControl.enable();
+                } else {
+                    mGyroControl.disable();
+                }
+            }
+        };
     }
 
     protected void initLayout(int resId) {
@@ -339,6 +359,8 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else if (requestCode == REQUEST_CODE_SCREEN_CAPTURE && resultCode == Activity.RESULT_OK) {
+            mQuickSettingSideDialog.onActivityResult(requestCode, resultCode, data);
         }
     }
 
@@ -388,26 +410,9 @@ public class MainActivity extends BaseActivity implements ControlButtonMenuListe
     }
 
     private void openQuickSettings() {
-        if(mQuickSettingSideDialog == null) {
-            mQuickSettingSideDialog = new QuickSettingSideDialog(this, mControlLayout) {
-                @Override
-                public void onResolutionChanged() {
-                    minecraftGLView.refreshSize();
-                    mHotbarView.onResolutionChanged();
-                }
-
-                @Override
-                public void onGyroStateChanged() {
-                    mGyroControl.updateOrientation();
-                    if (PREF_ENABLE_GYRO) {
-                        mGyroControl.enable();
-                    } else {
-                        mGyroControl.disable();
-                    }
-                }
-            };
+        if(mQuickSettingSideDialog != null) {
+            mQuickSettingSideDialog.appear(true);
         }
-        mQuickSettingSideDialog.appear(true);
     }
 
     public static void toggleMouse(Context ctx) {
