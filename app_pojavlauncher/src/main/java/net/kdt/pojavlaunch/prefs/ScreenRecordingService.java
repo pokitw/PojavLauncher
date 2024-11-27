@@ -1,19 +1,3 @@
-package net.kdt.pojavlaunch.services;
-
-import android.app.Service;
-import android.content.Intent;
-import android.hardware.display.DisplayManager;
-import android.hardware.display.VirtualDisplay;
-import android.media.MediaRecorder;
-import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
-import android.os.IBinder;
-import android.util.DisplayMetrics;
-import android.view.WindowManager;
-
-import java.io.File;
-import java.io.IOException;
-
 public class ScreenRecordingService extends Service {
     private MediaProjectionManager mProjectionManager;
     private MediaProjection mMediaProjection;
@@ -29,45 +13,56 @@ public class ScreenRecordingService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            return START_NOT_STICKY;
+        }
+
         int resultCode = intent.getIntExtra("resultCode", -1);
         Intent data = intent.getParcelableExtra("data");
         String outputDir = intent.getStringExtra("outputDir");
 
-        mMediaProjection = mProjectionManager.getMediaProjection(resultCode, data);
-        mMediaRecorder = new MediaRecorder();
-
-        DisplayMetrics metrics = new DisplayMetrics();
-        WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        windowManager.getDefaultDisplay().getMetrics(metrics);
-        int screenWidth = metrics.widthPixels;
-        int screenHeight = metrics.heightPixels;
-
-        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        mMediaRecorder.setVideoSize(screenWidth, screenHeight);
-        mMediaRecorder.setVideoFrameRate(30);
-
-        File outputFile = new File(outputDir, "gameplay_" + System.currentTimeMillis() + ".mp4");
-        outputFile.getParentFile().mkdirs();
-        mMediaRecorder.setOutputFile(outputFile.getAbsolutePath());
-
-        try {
-            mMediaRecorder.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (resultCode == -1 || data == null) {
             return START_NOT_STICKY;
         }
 
-        mVirtualDisplay = mMediaProjection.createVirtualDisplay("ScreenRecording",
-                screenWidth, screenHeight, metrics.densityDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                mMediaRecorder.getSurface(), null, null);
+        mMediaProjection = mProjectionManager.getMediaProjection(resultCode, data);
+        mMediaRecorder = new MediaRecorder();
+
+        initRecorder(outputDir);
+        createVirtualDisplay();
 
         mMediaRecorder.start();
         mIsRecording = true;
 
         return START_STICKY;
+    }
+
+    private void initRecorder(String outputDir) {
+        try {
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mMediaRecorder.setVideoEncodingBitRate(512 * 1000);
+            mMediaRecorder.setVideoFrameRate(30);
+            mMediaRecorder.setVideoSize(1280, 720);
+
+            File outputFile = new File(outputDir, "gameplay_" + System.currentTimeMillis() + ".mp4");
+            outputFile.getParentFile().mkdirs();
+            mMediaRecorder.setOutputFile(outputFile.getAbsolutePath());
+
+            mMediaRecorder.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createVirtualDisplay() {
+        mVirtualDisplay = mMediaProjection.createVirtualDisplay("ScreenRecording",
+                1280, 720, getResources().getDisplayMetrics().densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                mMediaRecorder.getSurface(), null, null);
     }
 
     @Override
